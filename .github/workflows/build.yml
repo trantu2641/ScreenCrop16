@@ -1,0 +1,52 @@
+name: Build ScreenCrop16
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            git \
+            clang \
+            make \
+            perl \
+            fakeroot \
+            dpkg-dev \
+            xz-utils \
+            ldid
+
+      - name: Install Theos
+        run: |
+          git clone --recursive https://github.com/theos/theos.git $HOME/theos
+
+      - name: Download iOS SDK
+        run: |
+          git clone https://github.com/theos/sdks.git /tmp/sdks
+          mkdir -p $HOME/theos/sdks
+          cp -R /tmp/sdks/iPhoneOS16.5.sdk $HOME/theos/sdks/
+
+      - name: Build rootless package
+        env:
+          THEOS: ${{ github.workspace }}/../theos
+        run: |
+          export THEOS=$HOME/theos
+          make clean
+          make package FINALPACKAGE=1
+
+      - name: Upload DEB
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenCrop16-deb
+          path: packages/*.deb
